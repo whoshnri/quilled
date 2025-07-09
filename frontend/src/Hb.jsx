@@ -93,14 +93,14 @@ const Hb = () => {
             <h3 className="text-xl font-semibold text-white mb-4">Let's Connect</h3>
             <div className="flex flex-wrap gap-4">
               <a
-                href="https://www.google.com/search?q=%22i%27m+still+building+this%22"
+                href="https://henrybassey.vercel.app"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-center gap-3 bg-slate-700/40 hover:bg-slate-600/60 border border-slate-600/50 hover:border-slate-500 rounded-lg px-4 py-3 transition-all duration-300"
               >
                 <Briefcase className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
                 <span className="text-slate-300 group-hover:text-white font-medium transition-colors">
-                  hb.me :)
+                    My portfolio
                 </span>
               </a>
               <a
