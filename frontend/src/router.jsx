@@ -2,9 +2,7 @@ import {
   createBrowserRouter,
   createRoutesFromElements,
   Route,
-  Routes,
   redirect,
-  useLocation
 } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import React from "react";
@@ -23,14 +21,6 @@ const LoginForm = lazy(() => import("./components/Users/Login"));
 const SignupForm = lazy(() => import("./components/Users/SignUp"));
 
 const API = import.meta.env.VITE_API_BASE_URL;
-
-function HandlerRoutes() {
-  const location = useLocation();
-
-  return (
-    <StackHandler app={stackClientApp} location={location.pathname} fullPage />
-  );
-}
 
 // Logout logic
 const logoutLoader = async () => {
