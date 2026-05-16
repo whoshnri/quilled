@@ -1,18 +1,9 @@
+import typography from "@tailwindcss/typography";
+
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,jsx,ts,tsx}"
-  ],
+  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
-    extend: {
-      screens: {
-        xs: '495px', // Custom breakpoint
-        cd: '764px', // Custom breakpoint
-      },
-      fontFamily: {
-        mono: ['"JetBrains Mono"', 'monospace'],
-      },
-    },
+    extend: {},
   },
-  plugins: [require('@tailwindcss/typography')],
-}
+  plugins: [typography],
+};
