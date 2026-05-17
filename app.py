@@ -72,8 +72,6 @@ def prerender_if_bot():
     is_bot = BOT_USER_AGENTS.search(user_agent) is not None
     is_html = "text/html" in accept or "*/*" in accept or not accept
 
-
-
     if is_bot and is_html:
         # Force HTTPS and proper URL encoding
         target_url = request.url.replace('http://', 'https://')
@@ -113,23 +111,29 @@ def prerender_if_bot():
             print(f"⚠️ Prerender error: {str(e)}")
 
     return None
+
+
 def generate_description(content):
     words = content.strip().split()
     return " ".join(words[:50]) + "..." if len(words) > 50 else " ".join(words[:-1]) + "..."
 
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
-def serve_static(path):
-    file_path = os.path.join(app.static_folder, path)
 
-    if path != "" and os.path.exists(file_path):
-        return send_from_directory(app.static_folder, path)
+@app.after_request
+def add_no_cache(response):
+    if request.path.startswith('/api/') or not request.path.startswith('/assets/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+    return response
 
-    return send_from_directory(app.static_folder, "index.html")
 
 @app.errorhandler(404)
 def not_found(e):
     return send_from_directory(app.static_folder, "index.html")
+
+
+# ────────────────────────────────
+# USERS
+# ────────────────────────────────
 
 # Get all registered users
 @app.route("/users", methods=["GET"])
@@ -148,6 +152,7 @@ def get_users():
         } for u in users
     ])
 
+
 # Register new user
 @app.route("/new/user", methods=["POST"])
 def create_user():
@@ -161,7 +166,6 @@ def create_user():
         if not existing_user:
             break
 
-
     new_user = User(
         username=data["username"],
         email=data["email"],
@@ -172,6 +176,7 @@ def create_user():
     db.session.commit()
 
     return jsonify({"message": "User created successfully"}), 201
+
 
 # Login existing user
 @app.route("/get/user", methods=['POST'])
@@ -190,6 +195,7 @@ def log_user():
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
+
 # Logout a user by revoking the token
 @app.route("/logout", methods=["POST"])
 @jwt_required()
@@ -203,8 +209,7 @@ def logout():
         return jsonify({"message": "Logout failed", "error": str(e), "status": 500}), 500
 
 
-
-#dashboard rendering
+# Verify UUID
 @app.route("/verify/uuid/<uuid>", methods=["GET"])
 @jwt_required()
 def verify_uuid(uuid):
@@ -212,7 +217,6 @@ def verify_uuid(uuid):
     if not user:
         return jsonify({"msg": "Invalid UUID"}), 404
     return jsonify({"username": user.username, uuid: user.uuid}), 200
-
 
 
 @app.route("/user/<string:username>", methods=["GET"])
@@ -228,7 +232,6 @@ def user(username):
             "post_count" : (len(u.posts)),
             "view_count" : sum(post.views for post in u.posts),
             "like_count": sum(post.likes for post in u.posts)
-
         }}), 201
 
 
@@ -383,6 +386,7 @@ def check_user():
         else:
             return jsonify({"message": "Username already taken", "status": 409}), 409
 
+
 # ────────────────────────────────
 # BLOGS
 # ────────────────────────────────
@@ -418,7 +422,8 @@ def get_blogs():
         "has_more": remaining > 0
     }), 200
 
-#get recent blogs
+
+# Get recent blogs
 @app.route("/get/blogs/recent", methods=['GET'])
 def get_blogs_recent():
     blogs = Blog.query.order_by(Blog.created_at.desc()).limit(6).all()
@@ -437,6 +442,7 @@ def get_blogs_recent():
         ]), 200
     return jsonify({"message": "No posts found"}), 404
 
+
 # Get a single blog by ID
 @app.route("/get/blog/<string:id>", methods=['GET'])
 def get_blog(id):
@@ -454,6 +460,7 @@ def get_blog(id):
             "content": blog.content,
         }), 201
     return jsonify({"message": "Blog not found"}), 404
+
 
 # Get blogs by author username
 @app.route("/get/blog/username/<string:username>", methods=['GET'])
@@ -502,7 +509,7 @@ def add_blog():
         return jsonify({"error": str(e)}), 400
 
 
-#updating blogs
+# Update a blog
 @app.route("/update/<string:id>", methods=['PATCH'])
 @jwt_required()
 def patch_blog(id):
@@ -532,13 +539,11 @@ def patch_blog(id):
     try:
         if content:
             blog.content = content
-            blog.desc= generate_description(content)
-
+            blog.desc = generate_description(content)
         if title:
             blog.title = title
         if category:
             blog.category = category
-
 
         db.session.commit()
         return jsonify({"message": "Post Updated", "status": 200}), 200
@@ -550,7 +555,10 @@ def patch_blog(id):
         }), 500
 
 
-#getting to comments
+# ────────────────────────────────
+# COMMENTS
+# ────────────────────────────────
+
 @app.route("/comments/<string:pid>", methods=['GET'])
 def get_comments(pid):
     comments = Comments.query.filter_by(blog_pid=pid).all()
@@ -568,18 +576,23 @@ def get_comments(pid):
 def add_comment(pid):
     data = request.get_json()
     try:
-        db.session.add(Comments(blog_pid=pid, comment=data["comment"],name=data["name"], timestamp=timestamp()))
+        db.session.add(Comments(blog_pid=pid, comment=data["comment"], name=data["name"], timestamp=timestamp()))
         db.session.commit()
-        return jsonify({"message" : "Comment added!"}), 201
+        return jsonify({"message": "Comment added!"}), 201
     except Exception as e:
-        return jsonify({"message" : f"An error {str(e)} occured"}), 500
-
-
+        return jsonify({"message": f"An error {str(e)} occured"}), 500
 
 
 # ────────────────────────────────
 # INTERACTIONS: Likes, Views
 # ────────────────────────────────
+
+def get_real_ip():
+    forwarded_for = request.headers.get('X-Forwarded-For', '')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    return request.remote_addr
+
 
 # Add a like to a blog post
 @app.route("/add/likes/<string:id>", methods=['PATCH'])
@@ -597,17 +610,11 @@ def add_likes(id):
     db.session.commit()
     return jsonify({"message": "Like added", "likes": blog.likes, "status": 200}), 200
 
-def get_real_ip():
-    forwarded_for = request.headers.get('X-Forwarded-For', '')
-    if forwarded_for:
-        return forwarded_for.split(',')[0].strip()
-    return request.remote_addr
 
 @app.route("/add/views/<string:id>", methods=['PATCH'])
 def add_views(id):
     ip = get_real_ip()
     today = timestamp()
-
 
     already_viewed = InteractionTracker.query.filter_by(
         blog_pid=id,
@@ -625,16 +632,16 @@ def add_views(id):
 
     blog.views += 1
 
-    # Record new view interaction
     new_interaction = InteractionTracker(
         blog_pid=id,
         ip_address=ip,
-        interaction_type='view'  # Store the current day to prevent duplicates
+        interaction_type='view'
     )
     db.session.add(new_interaction)
     db.session.commit()
 
     return jsonify({"message": "View added", "views": blog.views, "status": 200}), 200
+
 
 # Remove a like from a blog post
 @app.route("/remove/likes/<string:id>", methods=['PATCH'])
@@ -672,11 +679,15 @@ def analytics(username, datetime):
             )
             .scalar()
         )
-
         return jsonify({"total": int(total)}), 200
 
     except Exception as e:
         return jsonify({"Error": str(e), "total": int(0)}), 500
+
+
+# ────────────────────────────────
+# MISC
+# ────────────────────────────────
 
 @app.route("/send/feedback", methods=["POST"])
 def send_feedback():
@@ -692,9 +703,9 @@ def send_feedback():
     try:
         response = requests.post(GOOGLE_SCRIPT_URL2, json={
             "email": email,
-            "feedback" : feedback,
-            "rating" : rating
-            })
+            "feedback": feedback,
+            "rating": rating
+        })
         return jsonify(response.json()), response.status_code
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -714,6 +725,7 @@ def newsletter():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
 @app.route("/debug/interactions", methods=["GET"])
 def print_interactions():
     interactions = InteractionTracker.query.all()
@@ -727,6 +739,7 @@ def print_interactions():
         } for i in interactions
     ]), 200
 
+
 @app.route('/init-db', methods=['POST'])
 def init_db():
     try:
@@ -739,6 +752,16 @@ def init_db():
 # ────────────────────────────────
 # ENTRY POINT
 # ────────────────────────────────
+
+# ✅ Catch-all LAST — must stay here so all API routes above take priority
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_static(path):
+    file_path = os.path.join(app.static_folder, path)
+    if path != "" and os.path.exists(file_path):
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, "index.html")
+
 
 if __name__ == '__main__':
     app.run(debug=True)
