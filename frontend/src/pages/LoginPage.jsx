@@ -30,7 +30,14 @@ export default function LoginPage() {
       }
 
       localStorage.setItem("token", data.token);
-      navigate("/");
+      localStorage.setItem(
+        "session_user",
+        JSON.stringify({
+          username: data.username,
+          uuid: data.uuid,
+        }),
+      );
+      navigate(`/dashboard/${data.username}/${data.uuid}`);
     } catch (submitError) {
       setError(submitError.message || "Unable to login.");
     } finally {
@@ -41,15 +48,15 @@ export default function LoginPage() {
   return (
     <>
       <Helmet>
-        <title>Login | Quilled</title>
-        <meta name="description" content="Login to Quilled." />
+        <title>Login | Henry&apos;s Journal</title>
+        <meta name="description" content="Login to Henry&apos;s Journal." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="canonical" href="https://quilled-5su6.onrender.com/login" />
+        <link rel="canonical" href="https://quilled-5su6.onrender.com/whoshnri" />
       </Helmet>
 
       <main className="min-h-screen bg-[#0a0a0a] text-neutral-100 px-5 py-10 sm:px-8 flex items-center justify-center">
         <section className="w-full max-w-md border border-neutral-800 bg-black/40 p-6 sm:p-8">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-neutral-500">Quilled</p>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-neutral-500">Henry&apos;s Journal</p>
           <h1 className="mt-3 text-2xl font-semibold">Login</h1>
           <p className="mt-2 text-sm text-neutral-400">Access your account to continue.</p>
 
@@ -90,9 +97,6 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 flex gap-4 text-xs uppercase tracking-[0.14em]">
-            <Link to="/signup" className="text-neutral-300 hover:text-white">
-              Create account
-            </Link>
             <Link to="/" className="text-neutral-300 hover:text-white">
               Back to list
             </Link>

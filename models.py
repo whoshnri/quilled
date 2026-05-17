@@ -13,7 +13,9 @@ import re
 #import the module to calculate time ago or assign it directly
 from flask import Flask, send_from_directory
 import os
+import socket
 from dotenv import load_dotenv
+from sqlalchemy.engine.url import make_url
 load_dotenv()
 
 
@@ -24,7 +26,40 @@ def create_app():
     return app
 
 app = create_app()
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+
+def resolve_database_uri():
+    database_url = os.environ.get('DATABASE_URL', '').strip()
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+    # Render/prod should fail loudly if database connectivity is broken.
+    is_production = (
+        os.environ.get("RENDER", "").lower() == "true"
+        or os.environ.get("FLASK_ENV", "").lower() == "production"
+    )
+
+    if not database_url:
+        os.makedirs(app.instance_path, exist_ok=True)
+        return f"sqlite:///{os.path.join(app.instance_path, 'local-dev.db')}"
+
+    if not is_production:
+        parsed_url = make_url(database_url)
+        host = parsed_url.host
+        if host:
+            try:
+                socket.getaddrinfo(host, None)
+            except socket.gaierror:
+                os.makedirs(app.instance_path, exist_ok=True)
+                fallback_uri = f"sqlite:///{os.path.join(app.instance_path, 'local-dev.db')}"
+                print(
+                    f"WARNING: Could not resolve database host '{host}'. "
+                    f"Using local SQLite fallback at {fallback_uri}."
+                )
+                return fallback_uri
+
+    return database_url
+
+app.config['SQLALCHEMY_DATABASE_URI'] = resolve_database_uri()
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 1800,
@@ -145,7 +180,6 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
 
 
 

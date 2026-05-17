@@ -1,4 +1,4 @@
-from models import User, Blog,Comments, app, db, hash_password, verify_password, cache, InteractionTracker
+from models import User, Blog,Comments, Images, app, db, hash_password, verify_password, cache, InteractionTracker
 from sqlalchemy import func
 from flask import jsonify, request,send_from_directory
 from tools import timestamp, time_difference, generate_opaque_id
@@ -230,6 +230,138 @@ def user(username):
             "like_count": sum(post.likes for post in u.posts)
 
         }}), 201
+
+
+@app.route("/dashboard/<string:username>/<string:uuid>", methods=["GET"])
+@jwt_required()
+def dashboard(username, uuid):
+    token_uuid = get_jwt_identity()
+    if token_uuid != uuid:
+        return jsonify({"message": "Unauthorized: UUID mismatch", "status": 403}), 403
+
+    current_user = User.query.filter_by(username=username, uuid=uuid).first()
+    if not current_user:
+        return jsonify({"message": "User not found", "status": 404}), 404
+
+    blogs = Blog.query.filter_by(author=current_user.username).order_by(Blog.created_at.desc()).all()
+    blog_pids = [blog.pid for blog in blogs]
+
+    comment_totals = {}
+    recent_comments = []
+    if blog_pids:
+        grouped_comments = (
+            db.session.query(Comments.blog_pid, func.count(Comments.id))
+            .filter(Comments.blog_pid.in_(blog_pids))
+            .group_by(Comments.blog_pid)
+            .all()
+        )
+        comment_totals = {blog_pid: int(total) for blog_pid, total in grouped_comments}
+
+        recent_comment_rows = (
+            Comments.query
+            .filter(Comments.blog_pid.in_(blog_pids))
+            .order_by(Comments.id.desc())
+            .limit(30)
+            .all()
+        )
+        title_map = {blog.pid: blog.title for blog in blogs}
+        recent_comments = [
+            {
+                "blog_pid": row.blog_pid,
+                "blog_title": title_map.get(row.blog_pid, "Untitled"),
+                "name": row.name,
+                "comment": row.comment,
+                "timestamp": row.timestamp,
+            }
+            for row in recent_comment_rows
+        ]
+
+    blog_payload = [
+        {
+            "pid": blog.pid,
+            "title": blog.title,
+            "category": blog.category,
+            "created": blog.posted_on,
+            "likes": blog.likes,
+            "views": blog.views,
+            "comment_count": comment_totals.get(blog.pid, 0),
+        }
+        for blog in blogs
+    ]
+
+    return jsonify({
+        "status": 200,
+        "data": {
+            "user": {
+                "username": current_user.username,
+                "email": current_user.email,
+                "uuid": current_user.uuid,
+            },
+            "stats": {
+                "post_count": len(blogs),
+                "view_count": sum(blog.views for blog in blogs),
+                "like_count": sum(blog.likes for blog in blogs),
+                "comment_count": sum(comment_totals.values()),
+            },
+            "blogs": blog_payload,
+            "recent_comments": recent_comments,
+        }
+    }), 200
+
+
+@app.route("/user/profile/<string:uuid>", methods=["PATCH"])
+@jwt_required()
+def update_user_profile(uuid):
+    token_uuid = get_jwt_identity()
+    if token_uuid != uuid:
+        return jsonify({"message": "Unauthorized: UUID mismatch", "status": 403}), 403
+
+    user = User.query.filter_by(uuid=uuid).first()
+    if not user:
+        return jsonify({"message": "User not found", "status": 404}), 404
+
+    data = request.get_json() or {}
+    new_username = data.get("username", "").strip()
+    new_email = data.get("email", "").strip()
+    new_password = data.get("password", "")
+
+    changed = False
+
+    if new_username and new_username != user.username:
+        existing = User.query.filter_by(username=new_username).first()
+        if existing:
+            return jsonify({"message": "Username already taken", "status": 409}), 409
+
+        old_username = user.username
+        user.username = new_username
+        Blog.query.filter_by(author=old_username).update({"author": new_username})
+        Images.query.filter_by(user=old_username).update({"user": new_username})
+        changed = True
+
+    if new_email and new_email != user.email:
+        existing = User.query.filter_by(email=new_email).first()
+        if existing:
+            return jsonify({"message": "Email already taken", "status": 409}), 409
+        user.email = new_email
+        changed = True
+
+    if new_password:
+        user.password = hash_password(new_password)
+        changed = True
+
+    if not changed:
+        return jsonify({"message": "No profile changes provided", "status": 400}), 400
+
+    db.session.commit()
+    return jsonify({
+        "status": 200,
+        "message": "Profile updated",
+        "data": {
+            "username": user.username,
+            "email": user.email,
+            "uuid": user.uuid,
+        }
+    }), 200
 
 
 # Check if username or email is already taken

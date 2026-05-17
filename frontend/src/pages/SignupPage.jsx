@@ -58,15 +58,15 @@ export default function SignupPage() {
   return (
     <>
       <Helmet>
-        <title>Signup | Quilled</title>
-        <meta name="description" content="Create a Quilled account." />
+        <title>Signup | Henry&apos;s Journal</title>
+        <meta name="description" content="Create a Henry&apos;s Journal account." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="canonical" href="https://quilled-5su6.onrender.com/signup" />
       </Helmet>
 
       <main className="min-h-screen bg-[#0a0a0a] text-neutral-100 px-5 py-10 sm:px-8 flex items-center justify-center">
         <section className="w-full max-w-md border border-neutral-800 bg-black/40 p-6 sm:p-8">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-neutral-500">Quilled</p>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-neutral-500">Henry&apos;s Journal</p>
           <h1 className="mt-3 text-2xl font-semibold">Signup</h1>
           <p className="mt-2 text-sm text-neutral-400">Create your account in one step.</p>
 
