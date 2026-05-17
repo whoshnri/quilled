@@ -3,7 +3,8 @@ import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import PageState from "../components/PageState";
 import useDashboardData from "../features/dashboard/hooks/useDashboardData";
-import { updateUserProfile } from "../services/dashboardApi";
+import ConfirmDialog from "../features/blogEditor/components/ConfirmDialog";
+import { deleteDashboardBlog, updateUserProfile } from "../services/dashboardApi";
 
 function StatCard({ label, value }) {
   return (
@@ -27,6 +28,9 @@ export default function DashboardPage() {
   });
   const [profileStatus, setProfileStatus] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [blogStatus, setBlogStatus] = useState("");
+  const [pendingDeleteBlog, setPendingDeleteBlog] = useState(null);
+  const [deletingBlog, setDeletingBlog] = useState(false);
 
   const safeBlogs = useMemo(() => data?.blogs || [], [data]);
   const safeComments = useMemo(() => data?.recent_comments || [], [data]);
@@ -90,6 +94,35 @@ export default function DashboardPage() {
     localStorage.removeItem("token");
     localStorage.removeItem("session_user");
     navigate("/whoshnri");
+  };
+
+  const requestDeleteBlog = (blog) => {
+    setBlogStatus("");
+    setPendingDeleteBlog(blog);
+  };
+
+  const confirmDeleteBlog = async () => {
+    if (!pendingDeleteBlog) {
+      return;
+    }
+    if (!token) {
+      setBlogStatus("You need to log in before deleting.");
+      setPendingDeleteBlog(null);
+      return;
+    }
+
+    setDeletingBlog(true);
+    const result = await deleteDashboardBlog({ pid: pendingDeleteBlog.pid, token });
+    setDeletingBlog(false);
+
+    if (!result.ok) {
+      setBlogStatus(result.error);
+      return;
+    }
+
+    setBlogStatus(`Deleted "${pendingDeleteBlog.title}".`);
+    setPendingDeleteBlog(null);
+    await reload();
   };
 
   if (!token) {
@@ -196,6 +229,13 @@ export default function DashboardPage() {
                                   >
                                     Edit
                                   </Link>
+                                  <button
+                                    type="button"
+                                    onClick={() => requestDeleteBlog(blog)}
+                                    className="border border-red-800 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-red-300 transition-colors hover:bg-red-900/40"
+                                  >
+                                    Delete
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -204,6 +244,7 @@ export default function DashboardPage() {
                       </table>
                     </div>
                   )}
+                  {blogStatus ? <p className="mt-3 text-sm text-neutral-300">{blogStatus}</p> : null}
                 </article>
 
                 <article className="border border-neutral-800 p-4">
@@ -271,6 +312,21 @@ export default function DashboardPage() {
           )}
         </section>
       </main>
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteBlog)}
+        title="Delete this blog?"
+        message={
+          pendingDeleteBlog
+            ? `This will permanently remove "${pendingDeleteBlog.title}" and related comments.`
+            : "This will permanently remove this blog."
+        }
+        confirmLabel="Delete"
+        confirmTone="danger"
+        busy={deletingBlog}
+        onCancel={() => setPendingDeleteBlog(null)}
+        onConfirm={confirmDeleteBlog}
+      />
     </>
   );
 }

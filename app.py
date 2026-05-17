@@ -555,6 +555,29 @@ def patch_blog(id):
         }), 500
 
 
+@app.route("/delete/<string:id>", methods=["DELETE"])
+@jwt_required()
+def delete_blog(id):
+    token_uuid = get_jwt_identity()
+    blog = Blog.query.filter_by(pid=id).first()
+    if not blog:
+        return jsonify({"message": "Blog not found", "status": 404}), 404
+
+    user = User.query.filter_by(username=blog.author).first()
+    if not user or user.uuid != token_uuid:
+        return jsonify({"message": "Unauthorized: UUID mismatch", "status": 403}), 403
+
+    try:
+        Comments.query.filter_by(blog_pid=id).delete()
+        InteractionTracker.query.filter_by(blog_pid=id).delete()
+        db.session.delete(blog)
+        db.session.commit()
+        return jsonify({"message": "Blog deleted successfully", "status": 200}), 200
+    except Exception:
+        db.session.rollback()
+        return jsonify({"message": "Failed to delete blog", "status": 500}), 500
+
+
 # ────────────────────────────────
 # COMMENTS
 # ────────────────────────────────
