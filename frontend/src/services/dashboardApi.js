@@ -71,3 +71,23 @@ export async function updateUserProfile({ uuid, payload, token }) {
     return { ok: false, error: error.message || "Network error while updating profile." };
   }
 }
+
+export async function deleteDashboardBlog({ pid, token }) {
+  try {
+    const response = await fetch(`${API}/delete/${pid}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await parseJson(response);
+    if (!response.ok) {
+      return { ok: false, error: data?.message || "Failed to delete blog." };
+    }
+
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message || "Network error while deleting blog." };
+  }
+}
