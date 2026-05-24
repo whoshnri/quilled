@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
 * {
@@ -12,13 +12,17 @@
 
 body {
   margin: 0;
-  background: #050505;
+  background: #0a0a0a;
   color: #e5e5e5;
-  font-family: "Geist", "Inter", "DM Sans", sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 14px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Playfair Display", serif;
 }
 
 a {
@@ -44,70 +48,4 @@ select {
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
-}
-
-.ql-cut-corner {
-  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
-}
-
-.ql-grid-mask {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.85), transparent 82%);
-}
-
-.ql-orbit-lines::before,
-.ql-orbit-lines::after {
-  content: "";
-  position: absolute;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  inset: 20% 10%;
-  transform: rotate(-8deg);
-  animation: ql-float 16s ease-in-out infinite;
-}
-
-.ql-orbit-lines::after {
-  inset: 14% 28%;
-  transform: rotate(10deg);
-  animation-delay: -6s;
-}
-
-.ql-stroke-drift {
-  animation: ql-stroke 8s ease-in-out infinite;
-}
-
-.ql-rail {
-  scroll-padding-left: 0.2rem;
-  scroll-behavior: smooth;
-}
-
-.ql-crop-word {
-  max-width: 100%;
-  overflow: hidden;
-  color: #0d0d0d;
-}
-
-@keyframes ql-float {
-  0%,
-  100% {
-    transform: rotate(-8deg) translate3d(0, 0, 0);
-  }
-  50% {
-    transform: rotate(-4deg) translate3d(0, -18px, 0);
-  }
-}
-
-@keyframes ql-stroke {
-  0%,
-  100% {
-    stroke-dasharray: 6 6;
-    stroke-dashoffset: 0;
-  }
-  50% {
-    stroke-dasharray: 12 8;
-    stroke-dashoffset: 20;
-  }
 }
