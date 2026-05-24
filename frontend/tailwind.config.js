@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["DM Sans", "sans-serif"],
+        sans: ["Geist", "Inter", "DM Sans", "sans-serif"],
         serif: ["Playfair Display", "serif"],
       },
     },
